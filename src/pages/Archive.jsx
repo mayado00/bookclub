@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import PageGuide from '../components/PageGuide'
 
 export default function Archive() {
   const [books, setBooks] = useState([])
@@ -49,9 +50,19 @@ export default function Archive() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>아카이브</h1>
-        <p>우리가 함께 읽어온 책들의 기록</p>
+      <div className="flex-between page-header">
+        <div>
+          <h1>아카이브</h1>
+          <p>우리가 함께 읽어온 책들의 기록</p>
+        </div>
+        <PageGuide
+          pageKey="archive"
+          title="아카이브 가이드"
+          steps={[
+            { icon: '📦', label: '한눈에 보기', desc: '지금까지 함께 읽은 모든 책과 활동 통계를 모아 볼 수 있어요' },
+            { icon: '💭', label: '생각 보드 이동', desc: '책 카드를 클릭하면 해당 책의 생각 보드로 바로 이동해요' },
+          ]}
+        />
       </div>
 
       {books.length > 0 ? (

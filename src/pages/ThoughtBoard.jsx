@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import PageGuide from '../components/PageGuide'
 
 const COLORS = [
   { name: 'lavender', value: '#EDE7F6' },
@@ -185,6 +186,16 @@ export default function ThoughtBoard({ nickname }) {
           <h1>생각 보드</h1>
           <p>카드를 만들고 선으로 연결해서 생각의 흐름을 그려보세요</p>
         </div>
+        <PageGuide
+          pageKey="board"
+          title="생각 보드 가이드"
+          steps={[
+            { icon: '🃏', label: '카드 만들기', desc: '+ 새 카드 버튼으로 생각 카드를 만들고 바로 내용을 적어요' },
+            { icon: '🎨', label: '색상 선택', desc: '카드 색상을 골라서 주제별로 구분해 보세요' },
+            { icon: '🔗', label: '연결하기', desc: '카드의 🔗 버튼을 누른 뒤 다른 카드를 클릭하면 선으로 이어져요' },
+            { icon: '💬', label: '댓글 달기', desc: '카드를 클릭하면 오른쪽에 댓글 패널이 열려요' },
+          ]}
+        />
       </div>
 
       {/* 책 선택 탭 */}
@@ -218,7 +229,7 @@ export default function ThoughtBoard({ nickname }) {
         >
           {/* 툴바 */}
           <div className="board-toolbar">
-            <button className="btn btn-primary btn-sm" onClick={addThought}>
+            <button className="btn btn-primary btn-sm" data-tip="새 생각 카드 만들기" onClick={addThought}>
               + 새 카드
             </button>
             <div className="color-picker" style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>

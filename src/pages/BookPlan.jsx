@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import PageGuide from '../components/PageGuide'
 
 export default function BookPlan({ nickname, emoji }) {
   const [books, setBooks] = useState([])
@@ -145,9 +146,21 @@ export default function BookPlan({ nickname, emoji }) {
           <h1>독서 계획</h1>
           <p>한 달에 한 권, 우리의 여정</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowBookModal(true)}>
-          + 새 책 추가
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <PageGuide
+            pageKey="plan"
+            title="독서 계획 가이드"
+            steps={[
+              { icon: '📚', label: '책 등록', desc: '새 책 추가 버튼으로 이번 달 읽을 책을 등록하세요' },
+              { icon: '✏️', label: '편집·삭제', desc: '책 정보 아래 연필/휴지통 아이콘으로 수정·삭제' },
+              { icon: '📝', label: '읽기 기록', desc: '페이지 번호, 인상 깊은 문장, 드는 생각을 자유롭게 기록' },
+              { icon: '😊', label: '이모지 캐릭터', desc: '사이드바에서 나만의 이모지를 선택하면 기록에 표시돼요' },
+            ]}
+          />
+          <button className="btn btn-primary" data-tip="읽을 책을 새로 등록해요" onClick={() => setShowBookModal(true)}>
+            + 새 책 추가
+          </button>
+        </div>
       </div>
 
       {/* 책 탭 */}
@@ -190,8 +203,8 @@ export default function BookPlan({ nickname, emoji }) {
                   {selectedBook.start_date && <span>{selectedBook.start_date} ~ {selectedBook.end_date}</span>}
                 </div>
                 <div className="book-actions">
-                  <button className="btn-icon" onClick={() => openEditBook(selectedBook)} title="편집">✏️</button>
-                  <button className="btn-icon" onClick={() => setShowDeleteConfirm(selectedBook)} title="삭제" style={{ color: 'var(--danger)' }}>🗑️</button>
+                  <button className="btn-icon" data-tip="책 정보 수정" onClick={() => openEditBook(selectedBook)}>✏️</button>
+                  <button className="btn-icon" data-tip="이 책 삭제" onClick={() => setShowDeleteConfirm(selectedBook)} style={{ color: 'var(--danger)' }}>🗑️</button>
                   <select
                     value={selectedBook.status}
                     onChange={(e) => handleUpdateBookStatus(selectedBook, e.target.value)}

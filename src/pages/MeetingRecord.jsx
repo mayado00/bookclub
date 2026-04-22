@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import PageGuide from '../components/PageGuide'
 
 export default function MeetingRecord({ nickname }) {
   const [books, setBooks] = useState([])
@@ -110,9 +111,20 @@ export default function MeetingRecord({ nickname }) {
           <h1>모임 기록</h1>
           <p>함께한 시간을 기록하고 추억해요</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          + 모임 기록 추가
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <PageGuide
+            pageKey="meetings"
+            title="모임 기록 가이드"
+            steps={[
+              { icon: '📅', label: '모임 등록', desc: '+ 모임 기록 추가 버튼으로 모임 날짜와 제목을 기록하세요' },
+              { icon: '📝', label: '자유 메모', desc: '각 모임 카드의 텍스트 영역에 나눈 이야기를 자유롭게 기록' },
+              { icon: '📸', label: '사진 업로드', desc: '+ 사진 추가 버튼으로 모임 사진을 올리고 클릭하면 크게 볼 수 있어요' },
+            ]}
+          />
+          <button className="btn btn-primary" data-tip="새 모임을 기록해요" onClick={() => setShowModal(true)}>
+            + 모임 기록 추가
+          </button>
+        </div>
       </div>
 
       {books.length > 0 && (
