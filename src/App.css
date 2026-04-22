@@ -652,6 +652,13 @@
   margin-top: 8px;
 }
 
+.note-field-guide {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
 /* Thought board */
 .board-container {
   position: relative;
