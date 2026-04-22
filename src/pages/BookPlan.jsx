@@ -217,34 +217,43 @@ export default function BookPlan({ nickname, emoji }) {
                 <span style={{ fontSize: 13, fontWeight: 500 }}>{nickname || '이름 없음'}</span>
               </div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <input
-                  style={{ width: 80, flexShrink: 0 }}
-                  value={noteForm.page}
-                  onChange={e => setNoteForm({...noteForm, page: e.target.value})}
-                  placeholder="p.42"
-                />
-                <input
-                  style={{ flex: 1 }}
-                  value={noteForm.excerpt}
-                  onChange={e => setNoteForm({...noteForm, excerpt: e.target.value})}
-                  onCompositionStart={() => composingRef.current = true}
-                  onCompositionEnd={() => composingRef.current = false}
-                  placeholder="내용 한 줄 발췌..."
-                />
+                <div style={{ width: 80, flexShrink: 0 }}>
+                  <div className="note-field-guide">페이지</div>
+                  <input
+                    style={{ width: '100%' }}
+                    value={noteForm.page}
+                    onChange={e => setNoteForm({...noteForm, page: e.target.value})}
+                    placeholder="p.42"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="note-field-guide">기억하고 싶은 문장이나 내용</div>
+                  <input
+                    style={{ width: '100%' }}
+                    value={noteForm.excerpt}
+                    onChange={e => setNoteForm({...noteForm, excerpt: e.target.value})}
+                    onCompositionStart={() => composingRef.current = true}
+                    onCompositionEnd={() => composingRef.current = false}
+                    placeholder="내용 한 줄 발췌..."
+                  />
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <textarea
-                  rows={2}
-                  style={{ flex: 1, resize: 'none' }}
-                  value={noteForm.thought}
-                  onChange={e => setNoteForm({...noteForm, thought: e.target.value})}
-                  onCompositionStart={() => composingRef.current = true}
-                  onCompositionEnd={() => composingRef.current = false}
-                  placeholder="드는 생각을 자유롭게 적어보세요..."
-                />
-                <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-end' }}>
-                  기록
-                </button>
+              <div>
+                <div className="note-field-guide">이 부분을 읽고 든 생각</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <textarea
+                    rows={2}
+                    style={{ flex: 1, resize: 'none' }}
+                    value={noteForm.thought}
+                    onChange={e => setNoteForm({...noteForm, thought: e.target.value})}
+                    onCompositionStart={() => composingRef.current = true}
+                    onCompositionEnd={() => composingRef.current = false}
+                    placeholder="자유롭게 적어보세요..."
+                  />
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-end' }}>
+                    기록
+                  </button>
+                </div>
               </div>
             </form>
           </div>
