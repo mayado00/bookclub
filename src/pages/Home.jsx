@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import PageGuide from '../components/PageGuide'
 
 export default function Home({ nickname }) {
   const [currentBook, setCurrentBook] = useState(null)
@@ -73,9 +74,20 @@ export default function Home({ nickname }) {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>{nickname ? `${nickname}님, 반가워요` : '냠냠'}</h1>
-        <p>함께 읽고, 함께 나누는 우리의 공간</p>
+      <div className="flex-between page-header">
+        <div>
+          <h1>{nickname ? `${nickname}님, 반가워요` : '냠냠'}</h1>
+          <p>함께 읽고, 함께 나누는 우리의 공간</p>
+        </div>
+        <PageGuide
+          pageKey="home"
+          title="홈 페이지 가이드"
+          steps={[
+            { icon: '📖', label: '현재 읽는 책', desc: '지금 읽고 있는 책의 정보와 생각 보드 바로가기' },
+            { icon: '📊', label: '통계', desc: '등록된 책, 생각 카드, 모임 수를 한눈에 확인' },
+            { icon: '🕐', label: '최근 활동', desc: '멤버들이 남긴 최근 생각 카드를 빠르게 확인' },
+          ]}
+        />
       </div>
 
       {/* 현재 읽는 책 */}
