@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap');
+
+:root {
+  /* 따뜻한 아날로그 팔레트 */
+  --bg: #FAF6F0;
+  --bg-warm: #F5EDE3;
+  --bg-card: #FFFCF7;
+  --text: #4A3F35;
+  --text-light: #8B7E74;
+  --text-heading: #2C241D;
+  --accent: #C4956A;
+  --accent-hover: #B07D52;
+  --accent-light: rgba(196, 149, 106, 0.15);
+  --border: #E5DDD3;
+  --border-light: #EDE7DF;
+  --shadow: 0 2px 12px rgba(74, 63, 53, 0.08);
+  --shadow-hover: 0 4px 20px rgba(74, 63, 53, 0.12);
+  --danger: #C07070;
+  --success: #7BA887;
+
+  /* 스티키노트 색상 */
+  --note-yellow: #FFF8E7;
+  --note-pink: #FFF0F0;
+  --note-blue: #F0F4FF;
+  --note-green: #F0FFF4;
+  --note-purple: #F5F0FF;
+
+  /* 폰트 */
+  --serif: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
+  --sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3 {
+  font-family: var(--serif);
+  color: var(--text-heading);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--sans);
+  border: none;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+input, textarea {
+  font-family: var(--sans);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg-card);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--accent);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-light);
+}
