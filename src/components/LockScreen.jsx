@@ -18,7 +18,7 @@ export default function LockScreen({ onLogin }) {
   return (
     <div className="lock-screen">
       <div className="lock-icon">📚</div>
-      <h1>우리 독서동아리</h1>
+      <h1>냠냠</h1>
       <p>비밀번호를 입력해 주세요</p>
       <form className="lock-form" onSubmit={handleSubmit}>
         <input

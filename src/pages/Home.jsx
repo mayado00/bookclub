@@ -74,7 +74,7 @@ export default function Home({ nickname }) {
   return (
     <div>
       <div className="page-header">
-        <h1>{nickname ? `${nickname}님, 반가워요` : '독서동아리'}</h1>
+        <h1>{nickname ? `${nickname}님, 반가워요` : '냠냠'}</h1>
         <p>함께 읽고, 함께 나누는 우리의 공간</p>
       </div>
 

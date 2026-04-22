@@ -1,22 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function BookPlan({ nickname }) {
+export default function BookPlan({ nickname, emoji }) {
   const [books, setBooks] = useState([])
-  const [plans, setPlans] = useState([])
+  const [notes, setNotes] = useState([])
   const [selectedBook, setSelectedBook] = useState(null)
   const [showBookModal, setShowBookModal] = useState(false)
-  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [editingBook, setEditingBook] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
   const [bookForm, setBookForm] = useState({
     title: '', author: '', description: '', cover_url: '',
     year_month: new Date().toISOString().slice(0, 7),
     start_date: '', end_date: '', status: 'reading'
   })
-  const [planForm, setPlanForm] = useState({ title: '', description: '', due_date: '' })
+  const [noteForm, setNoteForm] = useState({ page: '', excerpt: '', thought: '' })
   const [loading, setLoading] = useState(true)
+  const composingRef = useRef(false)
 
   useEffect(() => { loadBooks() }, [])
-  useEffect(() => { if (selectedBook) loadPlans(selectedBook.id) }, [selectedBook])
+  useEffect(() => { if (selectedBook) loadNotes(selectedBook.id) }, [selectedBook])
 
   async function loadBooks() {
     const { data } = await supabase
@@ -28,47 +30,93 @@ export default function BookPlan({ nickname }) {
     setLoading(false)
   }
 
-  async function loadPlans(bookId) {
+  async function loadNotes(bookId) {
     const { data } = await supabase
       .from('reading_plans')
       .select('*')
       .eq('book_id', bookId)
-      .order('sort_order')
-    setPlans(data || [])
+      .order('created_at', { ascending: false })
+    setNotes(data || [])
   }
 
   async function handleAddBook(e) {
     e.preventDefault()
-    const { data, error } = await supabase.from('books').insert([bookForm]).select()
-    if (!error && data) {
-      setBooks([data[0], ...books])
-      setSelectedBook(data[0])
-      setShowBookModal(false)
-      setBookForm({
-        title: '', author: '', description: '', cover_url: '',
-        year_month: new Date().toISOString().slice(0, 7),
-        start_date: '', end_date: '', status: 'reading'
-      })
+    if (editingBook) {
+      const { data, error } = await supabase
+        .from('books')
+        .update(bookForm)
+        .eq('id', editingBook.id)
+        .select()
+      if (!error && data) {
+        setBooks(books.map(b => b.id === editingBook.id ? data[0] : b))
+        if (selectedBook?.id === editingBook.id) setSelectedBook(data[0])
+      }
+    } else {
+      const { data, error } = await supabase.from('books').insert([bookForm]).select()
+      if (!error && data) {
+        setBooks([data[0], ...books])
+        setSelectedBook(data[0])
+      }
     }
+    closeBookModal()
   }
 
-  async function handleAddPlan(e) {
+  function openEditBook(book) {
+    setEditingBook(book)
+    setBookForm({
+      title: book.title, author: book.author,
+      description: book.description || '', cover_url: book.cover_url || '',
+      year_month: book.year_month || '', start_date: book.start_date || '',
+      end_date: book.end_date || '', status: book.status || 'reading'
+    })
+    setShowBookModal(true)
+  }
+
+  function closeBookModal() {
+    setShowBookModal(false)
+    setEditingBook(null)
+    setBookForm({
+      title: '', author: '', description: '', cover_url: '',
+      year_month: new Date().toISOString().slice(0, 7),
+      start_date: '', end_date: '', status: 'reading'
+    })
+  }
+
+  async function handleDeleteBook(book) {
+    await supabase.from('reading_plans').delete().eq('book_id', book.id)
+    await supabase.from('books').delete().eq('id', book.id)
+    const remaining = books.filter(b => b.id !== book.id)
+    setBooks(remaining)
+    if (selectedBook?.id === book.id) setSelectedBook(remaining[0] || null)
+    setShowDeleteConfirm(null)
+  }
+
+  async function handleAddNote(e) {
     e.preventDefault()
-    if (!selectedBook) return
+    if (!selectedBook || !nickname) return
     const { data, error } = await supabase
       .from('reading_plans')
-      .insert([{ ...planForm, book_id: selectedBook.id, sort_order: plans.length }])
+      .insert([{
+        book_id: selectedBook.id,
+        title: noteForm.page ? `p.${noteForm.page}` : '',
+        description: JSON.stringify({
+          excerpt: noteForm.excerpt,
+          thought: noteForm.thought,
+          author: nickname,
+          emoji: emoji || '😊',
+        }),
+        sort_order: notes.length,
+      }])
       .select()
     if (!error && data) {
-      setPlans([...plans, data[0]])
-      setShowPlanModal(false)
-      setPlanForm({ title: '', description: '', due_date: '' })
+      setNotes([data[0], ...notes])
+      setNoteForm({ page: '', excerpt: '', thought: '' })
     }
   }
 
-  async function handleDeletePlan(id) {
+  async function handleDeleteNote(id) {
     await supabase.from('reading_plans').delete().eq('id', id)
-    setPlans(plans.filter(p => p.id !== id))
+    setNotes(notes.filter(n => n.id !== id))
   }
 
   async function handleUpdateBookStatus(book, status) {
@@ -77,8 +125,16 @@ export default function BookPlan({ nickname }) {
     if (selectedBook?.id === book.id) setSelectedBook({ ...book, status })
   }
 
+  function parseNote(note) {
+    try {
+      const d = JSON.parse(note.description)
+      return { page: note.title, excerpt: d.excerpt, thought: d.thought, author: d.author, emoji: d.emoji || '😊' }
+    } catch {
+      return { page: note.title, excerpt: '', thought: note.description || '', author: '', emoji: '😊' }
+    }
+  }
+
   const statusLabel = { upcoming: '예정', reading: '읽는 중', completed: '완독' }
-  const statusColor = { upcoming: '#888', reading: 'var(--accent)', completed: 'var(--success)' }
 
   if (loading) return <div className="empty-state"><div className="empty-icon">⏳</div><p>불러오는 중...</p></div>
 
@@ -123,20 +179,9 @@ export default function BookPlan({ nickname }) {
               <div className="book-info">
                 <div className="flex-between">
                   <h3>{selectedBook.title}</h3>
-                  <select
-                    value={selectedBook.status}
-                    onChange={(e) => handleUpdateBookStatus(selectedBook, e.target.value)}
-                    style={{
-                      fontSize: 12, padding: '4px 8px', borderRadius: 6,
-                      color: statusColor[selectedBook.status],
-                      borderColor: statusColor[selectedBook.status],
-                      background: 'transparent'
-                    }}
-                  >
-                    <option value="upcoming">예정</option>
-                    <option value="reading">읽는 중</option>
-                    <option value="completed">완독</option>
-                  </select>
+                  <span className={`status-badge ${selectedBook.status}`}>
+                    {statusLabel[selectedBook.status]}
+                  </span>
                 </div>
                 <div className="author">{selectedBook.author}</div>
                 {selectedBook.description && <div className="description">{selectedBook.description}</div>}
@@ -144,42 +189,107 @@ export default function BookPlan({ nickname }) {
                   <span>📅 {selectedBook.year_month}</span>
                   {selectedBook.start_date && <span>{selectedBook.start_date} ~ {selectedBook.end_date}</span>}
                 </div>
+                <div className="book-actions">
+                  <button className="btn-icon" onClick={() => openEditBook(selectedBook)} title="편집">✏️</button>
+                  <button className="btn-icon" onClick={() => setShowDeleteConfirm(selectedBook)} title="삭제" style={{ color: 'var(--danger)' }}>🗑️</button>
+                  <select
+                    value={selectedBook.status}
+                    onChange={(e) => handleUpdateBookStatus(selectedBook, e.target.value)}
+                    style={{
+                      fontSize: 12, padding: '4px 10px', borderRadius: 8, marginLeft: 'auto',
+                      border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-light)'
+                    }}
+                  >
+                    <option value="upcoming">예정</option>
+                    <option value="reading">읽는 중</option>
+                    <option value="completed">완독</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* 주차별 계획 */}
-          <div className="flex-between mt-24">
-            <h3 style={{ fontSize: 16 }}>진행 계획</h3>
-            <button className="btn btn-sm btn-ghost" onClick={() => setShowPlanModal(true)}>
-              + 추가
-            </button>
+          {/* 읽기 기록 작성 */}
+          <div className="card mt-24" style={{ padding: 16 }}>
+            <form onSubmit={handleAddNote} className="note-form">
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                <span className="note-form-avatar">{emoji || '😊'}</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>{nickname || '이름 없음'}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input
+                  style={{ width: 80, flexShrink: 0 }}
+                  value={noteForm.page}
+                  onChange={e => setNoteForm({...noteForm, page: e.target.value})}
+                  placeholder="p.42"
+                />
+                <input
+                  style={{ flex: 1 }}
+                  value={noteForm.excerpt}
+                  onChange={e => setNoteForm({...noteForm, excerpt: e.target.value})}
+                  onCompositionStart={() => composingRef.current = true}
+                  onCompositionEnd={() => composingRef.current = false}
+                  placeholder="내용 한 줄 발췌..."
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <textarea
+                  rows={2}
+                  style={{ flex: 1, resize: 'none' }}
+                  value={noteForm.thought}
+                  onChange={e => setNoteForm({...noteForm, thought: e.target.value})}
+                  onCompositionStart={() => composingRef.current = true}
+                  onCompositionEnd={() => composingRef.current = false}
+                  placeholder="드는 생각을 자유롭게 적어보세요..."
+                />
+                <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-end' }}>
+                  기록
+                </button>
+              </div>
+            </form>
           </div>
-          {plans.length > 0 ? (
-            <div className="plan-timeline">
-              {plans.map((plan) => (
-                <div key={plan.id} className="card plan-item">
-                  <div className="plan-date">
-                    {plan.due_date || '-'}
-                  </div>
-                  <div className="plan-dot active" />
-                  <div className="plan-content" style={{ flex: 1 }}>
-                    <h4>{plan.title}</h4>
-                    {plan.description && <p>{plan.description}</p>}
-                  </div>
-                  <button
-                    className="card-action-btn"
-                    onClick={() => handleDeletePlan(plan.id)}
-                    title="삭제"
-                  >✕</button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="card empty-state" style={{ padding: 30 }}>
-              <p>아직 계획이 없어요. 주차별 읽기 분량을 추가해 보세요!</p>
-            </div>
-          )}
+
+          {/* 읽기 노트 목록 */}
+          <div className="mt-24">
+            <h3 style={{ fontSize: 16, marginBottom: 12 }}>읽기 기록</h3>
+            {notes.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {notes.map((note) => {
+                  const parsed = parseNote(note)
+                  return (
+                    <div key={note.id} className="card reading-note">
+                      <div className="reading-note-header">
+                        <span className="note-avatar">{parsed.emoji}</span>
+                        <span className="note-author">{parsed.author}</span>
+                        {parsed.page && <span className="note-page">{parsed.page}</span>}
+                        <button
+                          className="card-action-btn"
+                          onClick={() => handleDeleteNote(note.id)}
+                          style={{ marginLeft: 'auto' }}
+                          title="삭제"
+                        >✕</button>
+                      </div>
+                      {parsed.excerpt && (
+                        <div className="note-excerpt">"{parsed.excerpt}"</div>
+                      )}
+                      {parsed.thought && (
+                        <div className="note-thought">{parsed.thought}</div>
+                      )}
+                      <div className="note-time">
+                        {new Date(note.created_at).toLocaleDateString('ko-KR', {
+                          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="card empty-state" style={{ padding: 30 }}>
+                <p>아직 기록이 없어요. 읽으면서 생각을 적어보세요!</p>
+              </div>
+            )}
+          </div>
         </>
       ) : (
         <div className="card empty-state">
@@ -191,11 +301,27 @@ export default function BookPlan({ nickname }) {
         </div>
       )}
 
-      {/* 책 추가 모달 */}
+      {/* 삭제 확인 */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <h2>책 삭제</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-light)', margin: '8px 0 20px' }}>
+              <strong>{showDeleteConfirm.title}</strong>을(를) 삭제하면 관련 기록도 함께 삭제됩니다. 계속할까요?
+            </p>
+            <div className="confirm-actions">
+              <button className="btn btn-ghost" onClick={() => setShowDeleteConfirm(null)}>취소</button>
+              <button className="btn btn-danger" onClick={() => handleDeleteBook(showDeleteConfirm)}>삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 책 추가/편집 모달 */}
       {showBookModal && (
-        <div className="modal-overlay" onClick={() => setShowBookModal(false)}>
+        <div className="modal-overlay" onClick={closeBookModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>새 책 추가</h2>
+            <h2>{editingBook ? '책 편집' : '새 책 추가'}</h2>
             <form onSubmit={handleAddBook}>
               <div className="modal-field">
                 <label>제목 *</label>
@@ -228,35 +354,8 @@ export default function BookPlan({ nickname }) {
                 </div>
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowBookModal(false)}>취소</button>
-                <button type="submit" className="btn btn-primary">추가</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 계획 추가 모달 */}
-      {showPlanModal && (
-        <div className="modal-overlay" onClick={() => setShowPlanModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>진행 계획 추가</h2>
-            <form onSubmit={handleAddPlan}>
-              <div className="modal-field">
-                <label>제목 * (예: 1주차 - 1~3장)</label>
-                <input value={planForm.title} onChange={e => setPlanForm({...planForm, title: e.target.value})} required />
-              </div>
-              <div className="modal-field">
-                <label>설명</label>
-                <textarea rows={2} value={planForm.description} onChange={e => setPlanForm({...planForm, description: e.target.value})} />
-              </div>
-              <div className="modal-field">
-                <label>기한</label>
-                <input type="date" value={planForm.due_date} onChange={e => setPlanForm({...planForm, due_date: e.target.value})} />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowPlanModal(false)}>취소</button>
-                <button type="submit" className="btn btn-primary">추가</button>
+                <button type="button" className="btn btn-ghost" onClick={closeBookModal}>취소</button>
+                <button type="submit" className="btn btn-primary">{editingBook ? '저장' : '추가'}</button>
               </div>
             </form>
           </div>

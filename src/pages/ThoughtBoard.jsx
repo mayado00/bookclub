@@ -3,11 +3,11 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const COLORS = [
-  { name: 'yellow', value: '#FFF8E7' },
-  { name: 'pink', value: '#FFF0F0' },
-  { name: 'blue', value: '#F0F4FF' },
-  { name: 'green', value: '#F0FFF4' },
-  { name: 'purple', value: '#F5F0FF' },
+  { name: 'lavender', value: '#EDE7F6' },
+  { name: 'sky', value: '#E3F2FD' },
+  { name: 'mint', value: '#E0F7FA' },
+  { name: 'peach', value: '#FFF3E0' },
+  { name: 'rose', value: '#FCE4EC' },
 ]
 
 export default function ThoughtBoard({ nickname }) {

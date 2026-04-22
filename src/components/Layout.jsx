@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
 const navItems = [
@@ -9,9 +9,36 @@ const navItems = [
   { path: '/archive', label: '아카이브', icon: '📦' },
 ]
 
-export default function Layout({ children, nickname, onNicknameChange }) {
+const EMOJI_OPTIONS = ['😊','😎','🤓','🐱','🐶','🦊','🐻','🐰','🐸','🌸','🌻','🍀','⭐','🔥','💜','🎵','🦋','🍩']
+
+export default function Layout({ children, nickname, onNicknameChange, emoji, onEmojiChange }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [localNick, setLocalNick] = useState(nickname)
+  const composingRef = useRef(false)
   const location = useLocation()
+
+  const handleNickInput = (e) => {
+    setLocalNick(e.target.value)
+    if (!composingRef.current) {
+      onNicknameChange(e.target.value)
+    }
+  }
+
+  const handleCompositionStart = () => {
+    composingRef.current = true
+  }
+
+  const handleCompositionEnd = (e) => {
+    composingRef.current = false
+    setLocalNick(e.target.value)
+    onNicknameChange(e.target.value)
+  }
+
+  // sync from parent if changed externally
+  if (!composingRef.current && localNick !== nickname) {
+    setLocalNick(nickname)
+  }
 
   return (
     <div className="app-layout">
@@ -22,7 +49,7 @@ export default function Layout({ children, nickname, onNicknameChange }) {
 
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <h2>📚 독서동아리</h2>
+          <h2>냠냠</h2>
           <span>함께 읽고, 함께 나누고</span>
         </div>
 
@@ -44,33 +71,57 @@ export default function Layout({ children, nickname, onNicknameChange }) {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="nickname-bar">
-            <span>내 이름:</span>
+          <div className="nickname-section">
+            <button
+              className="emoji-avatar"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              title="이모지 변경"
+            >
+              {emoji || '😊'}
+            </button>
             <input
+              className="nickname-input"
               type="text"
-              value={nickname}
-              onChange={(e) => onNicknameChange(e.target.value)}
+              value={localNick}
+              onChange={handleNickInput}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
               placeholder="닉네임 입력"
             />
           </div>
+          {showEmojiPicker && (
+            <div className="emoji-picker">
+              {EMOJI_OPTIONS.map((e) => (
+                <button
+                  key={e}
+                  className={`emoji-option ${emoji === e ? 'selected' : ''}`}
+                  onClick={() => { onEmojiChange(e); setShowEmojiPicker(false) }}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </aside>
 
       <div className="mobile-header">
         <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
-        <h2>📚 독서동아리</h2>
+        <h2>냠냠</h2>
         <div style={{ width: 36 }} />
       </div>
 
       <main className="main-content">
         {!nickname && (
-          <div className="nickname-bar" style={{ marginBottom: 20 }}>
+          <div className="nickname-banner">
             <span>✏️</span>
             <span>먼저 닉네임을 설정해 주세요:</span>
             <input
               type="text"
-              value={nickname}
-              onChange={(e) => onNicknameChange(e.target.value)}
+              value={localNick}
+              onChange={handleNickInput}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
               placeholder="예: 철수"
               autoFocus
             />
