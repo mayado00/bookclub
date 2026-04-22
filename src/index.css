@@ -1,33 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* 따뜻한 아날로그 팔레트 */
-  --bg: #FAF6F0;
-  --bg-warm: #F5EDE3;
-  --bg-card: #FFFCF7;
-  --text: #4A3F35;
-  --text-light: #8B7E74;
-  --text-heading: #2C241D;
-  --accent: #C4956A;
-  --accent-hover: #B07D52;
-  --accent-light: rgba(196, 149, 106, 0.15);
-  --border: #E5DDD3;
-  --border-light: #EDE7DF;
-  --shadow: 0 2px 12px rgba(74, 63, 53, 0.08);
-  --shadow-hover: 0 4px 20px rgba(74, 63, 53, 0.12);
-  --danger: #C07070;
-  --success: #7BA887;
+  /* 블루·퍼플 파스텔 팔레트 */
+  --bg: #F6F8FC;
+  --bg-warm: #EEF1F8;
+  --bg-card: #FFFFFF;
+  --text: #2D3748;
+  --text-light: #8492A6;
+  --text-heading: #1A202C;
+  --accent: #7C6AE8;
+  --accent-hover: #6854D4;
+  --accent-light: rgba(124, 106, 232, 0.10);
+  --accent-blue: #5B8DEF;
+  --accent-blue-light: rgba(91, 141, 239, 0.10);
+  --border: #E2E8F0;
+  --border-light: #EDF2F7;
+  --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(124,106,232,0.06);
+  --shadow-hover: 0 4px 20px rgba(124,106,232,0.12);
+  --danger: #E57373;
+  --success: #66BB6A;
 
-  /* 스티키노트 색상 */
-  --note-yellow: #FFF8E7;
-  --note-pink: #FFF0F0;
-  --note-blue: #F0F4FF;
-  --note-green: #F0FFF4;
-  --note-purple: #F5F0FF;
+  /* 메모 카드 색상 */
+  --note-lavender: #EDE7F6;
+  --note-sky: #E3F2FD;
+  --note-mint: #E0F7FA;
+  --note-peach: #FFF3E0;
+  --note-rose: #FCE4EC;
 
   /* 폰트 */
-  --serif: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
-  --sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  --sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   font-family: var(--sans);
   font-size: 15px;
@@ -55,9 +56,9 @@ body {
 }
 
 h1, h2, h3 {
-  font-family: var(--serif);
+  font-family: var(--sans);
   color: var(--text-heading);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 

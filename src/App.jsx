@@ -14,12 +14,15 @@ const APP_PASSWORD = import.meta.env.VITE_APP_PASSWORD || 'bookclub'
 function App() {
   const [authenticated, setAuthenticated] = useState(false)
   const [nickname, setNickname] = useState('')
+  const [emoji, setEmoji] = useState('')
 
   useEffect(() => {
     const saved = sessionStorage.getItem('bc_auth')
     const savedNick = localStorage.getItem('bc_nickname')
+    const savedEmoji = localStorage.getItem('bc_emoji')
     if (saved === 'true') setAuthenticated(true)
     if (savedNick) setNickname(savedNick)
+    if (savedEmoji) setEmoji(savedEmoji)
   }, [])
 
   const handleLogin = (password) => {
@@ -33,7 +36,12 @@ function App() {
 
   const handleNicknameChange = (name) => {
     setNickname(name)
-    localStorage.setItem('bc_nickname', name)
+    if (name) localStorage.setItem('bc_nickname', name)
+  }
+
+  const handleEmojiChange = (e) => {
+    setEmoji(e)
+    localStorage.setItem('bc_emoji', e)
   }
 
   if (!authenticated) {
@@ -41,13 +49,13 @@ function App() {
   }
 
   return (
-    <Layout nickname={nickname} onNicknameChange={handleNicknameChange}>
+    <Layout nickname={nickname} onNicknameChange={handleNicknameChange} emoji={emoji} onEmojiChange={handleEmojiChange}>
       <Routes>
-        <Route path="/" element={<Home nickname={nickname} />} />
-        <Route path="/plan" element={<BookPlan nickname={nickname} />} />
-        <Route path="/board" element={<ThoughtBoard nickname={nickname} />} />
-        <Route path="/board/:bookId" element={<ThoughtBoard nickname={nickname} />} />
-        <Route path="/meetings" element={<MeetingRecord nickname={nickname} />} />
+        <Route path="/" element={<Home nickname={nickname} emoji={emoji} />} />
+        <Route path="/plan" element={<BookPlan nickname={nickname} emoji={emoji} />} />
+        <Route path="/board" element={<ThoughtBoard nickname={nickname} emoji={emoji} />} />
+        <Route path="/board/:bookId" element={<ThoughtBoard nickname={nickname} emoji={emoji} />} />
+        <Route path="/meetings" element={<MeetingRecord nickname={nickname} emoji={emoji} />} />
         <Route path="/archive" element={<Archive />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
