@@ -19,20 +19,20 @@ function App() {
   const [emoji, setEmoji] = useState('')
 
   useEffect(() => {
-    // 현재 세션 확인
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        checkMember(session)
-      } else {
-        setLoading(false)
-      }
-    })
+    let mounted = true
 
-    // 인증 상태 변경 리스너
+    // onAuthStateChange가 INITIAL_SESSION을 자동 발생시키므로
+    // getSession()과 중복 호출하지 않음
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!mounted) return
         if (session) {
-          await checkMember(session)
+          try {
+            await checkMember(session)
+          } catch (err) {
+            console.error('checkMember error:', err)
+            if (mounted) setLoading(false)
+          }
         } else {
           setSession(null)
           setAuthorized(false)
@@ -45,28 +45,50 @@ function App() {
     const savedEmoji = localStorage.getItem('bc_emoji')
     if (savedEmoji) setEmoji(savedEmoji)
 
-    return () => subscription.unsubscribe()
+    // 안전장치: 10초 후에도 로딩이면 강제 해제
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 10000)
+
+    return () => {
+      mounted = false
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function checkMember(session) {
-    const email = session.user.email
-    const { data, error } = await supabase
-      .from('members')
-      .select('id, nickname, emoji')
-      .eq('email', email)
-      .single()
+    try {
+      const email = session?.user?.email
+      if (!email) {
+        setLoading(false)
+        return
+      }
 
-    if (data) {
-      setSession(session)
-      setAuthorized(true)
-      setNickname(data.nickname || session.user.user_metadata?.full_name || '')
-      if (data.emoji) setEmoji(data.emoji)
-    } else {
-      // 허용되지 않은 이메일
-      setAuthError(`${email}은(는) 등록된 멤버가 아니에요.`)
-      await supabase.auth.signOut()
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, nickname, emoji')
+        .eq('email', email)
+        .single()
+
+      if (error) {
+        console.error('Members query error:', error)
+      }
+
+      if (data) {
+        setSession(session)
+        setAuthorized(true)
+        setNickname(data.nickname || session.user.user_metadata?.full_name || '')
+        if (data.emoji) setEmoji(data.emoji)
+      } else {
+        setAuthError(`${email}은(는) 등록된 멤버가 아니에요.`)
+        await supabase.auth.signOut()
+      }
+    } catch (err) {
+      console.error('checkMember exception:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleNicknameChange = async (name) => {
