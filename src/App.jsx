@@ -20,19 +20,46 @@ function App() {
 
   useEffect(() => {
     let mounted = true
+    let initialDone = false
 
-    // onAuthStateChange가 INITIAL_SESSION을 자동 발생시키므로
-    // getSession()과 중복 호출하지 않음
+    // 1) getSession()으로 즉시 로컬 세션 확인 (빠름)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted || initialDone) return
+      initialDone = true
+      if (session) {
+        try {
+          await checkMember(session)
+        } catch (err) {
+          console.error('getSession checkMember error:', err)
+          if (mounted) setLoading(false)
+        }
+      } else {
+        setLoading(false)
+      }
+    })
+
+    // 2) onAuthStateChange: 이후 로그인/로그아웃 변경만 처리
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!mounted) return
-        if (session) {
-          try {
-            await checkMember(session)
-          } catch (err) {
-            console.error('checkMember error:', err)
-            if (mounted) setLoading(false)
+        // INITIAL_SESSION은 getSession에서 이미 처리됨
+        if (event === 'INITIAL_SESSION') {
+          // getSession이 아직 안 끝났으면 여기서 처리
+          if (!initialDone) {
+            initialDone = true
+            if (session) {
+              try { await checkMember(session) }
+              catch { if (mounted) setLoading(false) }
+            } else {
+              setLoading(false)
+            }
           }
+          return
+        }
+        // SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED 등
+        if (session) {
+          try { await checkMember(session) }
+          catch { if (mounted) setLoading(false) }
         } else {
           setSession(null)
           setAuthorized(false)
@@ -45,10 +72,10 @@ function App() {
     const savedEmoji = localStorage.getItem('bc_emoji')
     if (savedEmoji) setEmoji(savedEmoji)
 
-    // 안전장치: 10초 후에도 로딩이면 강제 해제
+    // 안전장치: 5초 후에도 로딩이면 강제 해제
     const timeout = setTimeout(() => {
       if (mounted) setLoading(false)
-    }, 10000)
+    }, 5000)
 
     return () => {
       mounted = false
@@ -71,8 +98,14 @@ function App() {
         .eq('email', email)
         .single()
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = "not found" (멤버가 아닌 경우)
+        // 그 외 에러는 네트워크/서버 문제 → 로그아웃하지 않고 세션 유지
         console.error('Members query error:', error)
+        // 세션은 유지하되 authorized는 false → 로그인 화면 표시
+        // 하지만 signOut은 하지 않음 (세션 보존)
+        setLoading(false)
+        return
       }
 
       if (data) {
@@ -81,11 +114,13 @@ function App() {
         setNickname(data.nickname || session.user.user_metadata?.full_name || '')
         if (data.emoji) setEmoji(data.emoji)
       } else {
+        // 실제로 멤버가 아닌 경우에만 signOut
         setAuthError(`${email}은(는) 등록된 멤버가 아니에요.`)
         await supabase.auth.signOut()
       }
     } catch (err) {
       console.error('checkMember exception:', err)
+      // 네트워크 에러 등 → 세션 유지, signOut 하지 않음
     } finally {
       setLoading(false)
     }
