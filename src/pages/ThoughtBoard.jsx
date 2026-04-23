@@ -11,6 +11,13 @@ const COLORS = [
   { name: 'rose', value: '#FCE4EC' },
 ]
 
+const EMOJI_AVATARS = ['👨‍💼', '👩‍💼', '🧑‍🎓', '👨‍🎨', '👩‍💻', '🧑‍🔬', '👨‍🏫', '👩‍⚕️', '🧑‍🍳', '👨‍🌾']
+
+function getEmojiForNickname(nickname) {
+  const hash = nickname.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return EMOJI_AVATARS[hash % EMOJI_AVATARS.length]
+}
+
 export default function ThoughtBoard({ nickname }) {
   const { bookId } = useParams()
   const [books, setBooks] = useState([])
@@ -19,11 +26,16 @@ export default function ThoughtBoard({ nickname }) {
   const [connections, setConnections] = useState([])
   const [comments, setComments] = useState([])
   const [selectedCard, setSelectedCard] = useState(null)
-  const [connecting, setConnecting] = useState(null) // 연결 모드
+  const [connecting, setConnecting] = useState(null)
   const [dragInfo, setDragInfo] = useState(null)
   const [newCardColor, setNewCardColor] = useState(COLORS[0].value)
   const [commentText, setCommentText] = useState('')
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [panDrag, setPanDrag] = useState(null)
+  const [hoveredConnection, setHoveredConnection] = useState(null)
   const boardRef = useRef(null)
+  const svgRef = useRef(null)
 
   useEffect(() => { loadBooks() }, [])
   useEffect(() => {
@@ -125,6 +137,11 @@ export default function ThoughtBoard({ nickname }) {
     if (data) setConnections([...connections, data[0]])
   }
 
+  async function deleteConnection(id) {
+    await supabase.from('connections').delete().eq('id', id)
+    setConnections(connections.filter(c => c.id !== id))
+  }
+
   async function addComment() {
     if (!selectedCard || !commentText.trim() || !nickname) return
     const { data } = await supabase.from('comments').insert([{
@@ -139,8 +156,9 @@ export default function ThoughtBoard({ nickname }) {
     }
   }
 
-  // 드래그 핸들러
   const handleMouseDown = useCallback((e, thought) => {
+    if (e.button !== 0) return // left click only
+    
     if (connecting) {
       addConnection(connecting, thought.id)
       setConnecting(null)
@@ -150,20 +168,54 @@ export default function ThoughtBoard({ nickname }) {
     const rect = boardRef.current.getBoundingClientRect()
     setDragInfo({
       id: thought.id,
-      offsetX: e.clientX - thought.pos_x - rect.left,
-      offsetY: e.clientY - thought.pos_y - rect.top,
+      offsetX: e.clientX - thought.pos_x - rect.left - pan.x,
+      offsetY: e.clientY - thought.pos_y - rect.top - pan.y,
     })
-  }, [connecting, thoughts])
+  }, [connecting, pan])
+
+  const handleTouchStart = useCallback((e, thought) => {
+    if (connecting) {
+      addConnection(connecting, thought.id)
+      setConnecting(null)
+      return
+    }
+
+    const touch = e.touches[0]
+    const rect = boardRef.current.getBoundingClientRect()
+    setDragInfo({
+      id: thought.id,
+      offsetX: touch.clientX - thought.pos_x - rect.left - pan.x,
+      offsetY: touch.clientY - thought.pos_y - rect.top - pan.y,
+    })
+  }, [connecting, pan])
 
   const handleMouseMove = useCallback((e) => {
+    if (panDrag) {
+      const dx = e.clientX - panDrag.startX
+      const dy = e.clientY - panDrag.startY
+      setPan({ x: panDrag.startPan.x + dx, y: panDrag.startPan.y + dy })
+      return
+    }
+
     if (!dragInfo) return
     const rect = boardRef.current.getBoundingClientRect()
-    const x = Math.max(0, e.clientX - rect.left - dragInfo.offsetX)
-    const y = Math.max(0, e.clientY - rect.top - dragInfo.offsetY)
+    const x = Math.max(0, e.clientX - rect.left - dragInfo.offsetX - pan.x)
+    const y = Math.max(0, e.clientY - rect.top - dragInfo.offsetY - pan.y)
     setThoughts(prev =>
       prev.map(t => t.id === dragInfo.id ? { ...t, pos_x: x, pos_y: y } : t)
     )
-  }, [dragInfo])
+  }, [dragInfo, panDrag, pan])
+
+  const handleTouchMove = useCallback((e) => {
+    if (!dragInfo) return
+    const touch = e.touches[0]
+    const rect = boardRef.current.getBoundingClientRect()
+    const x = Math.max(0, touch.clientX - rect.left - dragInfo.offsetX - pan.x)
+    const y = Math.max(0, touch.clientY - rect.top - dragInfo.offsetY - pan.y)
+    setThoughts(prev =>
+      prev.map(t => t.id === dragInfo.id ? { ...t, pos_x: x, pos_y: y } : t)
+    )
+  }, [dragInfo, pan])
 
   const handleMouseUp = useCallback(() => {
     if (dragInfo) {
@@ -171,10 +223,67 @@ export default function ThoughtBoard({ nickname }) {
       if (t) updateThoughtPosition(t.id, t.pos_x, t.pos_y)
       setDragInfo(null)
     }
+    setPanDrag(null)
   }, [dragInfo, thoughts])
+
+  const handleTouchEnd = useCallback(() => {
+    if (dragInfo) {
+      const t = thoughts.find(th => th.id === dragInfo.id)
+      if (t) updateThoughtPosition(t.id, t.pos_x, t.pos_y)
+      setDragInfo(null)
+    }
+  }, [dragInfo, thoughts])
+
+  const handleWheel = useCallback((e) => {
+    if (!e.ctrlKey && !e.metaKey) return
+    e.preventDefault()
+    const rect = boardRef.current.getBoundingClientRect()
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+    
+    const newZoom = Math.max(0.5, Math.min(3, zoom - e.deltaY * 0.001))
+    const zoomDiff = newZoom - zoom
+    
+    setPan({
+      x: pan.x - mouseX * zoomDiff / zoom,
+      y: pan.y - mouseY * zoomDiff / zoom,
+    })
+    setZoom(newZoom)
+  }, [zoom, pan])
+
+  const handleBoardMouseDown = useCallback((e) => {
+    if (e.button !== 1 && e.button !== 2 && !(e.button === 0 && e.shiftKey)) return // middle/right click or shift+left
+    if (e.target !== boardRef.current) return
+    e.preventDefault()
+    
+    setPanDrag({
+      startX: e.clientX,
+      startY: e.clientY,
+      startPan: { ...pan },
+    })
+  }, [pan])
 
   function getCardCenter(thought) {
     return { x: thought.pos_x + 100, y: thought.pos_y + 50 }
+  }
+
+  function generateBezierPath(x1, y1, x2, y2) {
+    const dx = x2 - x1
+    const dy = y2 - y1
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    const controlOffset = distance * 0.2
+    
+    const midX = (x1 + x2) / 2
+    const midY = (y1 + y2) / 2
+    const perpX = -dy / distance * controlOffset
+    const perpY = dx / distance * controlOffset
+    
+    return `M ${x1} ${y1} Q ${midX + perpX} ${midY + perpY}, ${x2} ${y2}`
+  }
+
+  const resetZoom = () => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
   }
 
   const activeBook = books.find(b => b.id === activeBookId)
@@ -194,11 +303,11 @@ export default function ThoughtBoard({ nickname }) {
             { icon: '🎨', label: '색상 선택', desc: '카드 색상을 골라서 주제별로 구분해 보세요' },
             { icon: '🔗', label: '연결하기', desc: '카드의 🔗 버튼을 누른 뒤 다른 카드를 클릭하면 선으로 이어져요' },
             { icon: '💬', label: '댓글 달기', desc: '카드를 클릭하면 오른쪽에 댓글 패널이 열려요' },
+            { icon: '🔍', label: '줌/팬', desc: '마우스 휠(Cmd/Ctrl)로 확대하고, Shift나 중간 마우스로 보드를 이동해요' },
           ]}
         />
       </div>
 
-      {/* 책 선택 탭 */}
       {books.length > 0 && (
         <div className="book-tabs">
           {books.map((book) => (
@@ -225,14 +334,17 @@ export default function ThoughtBoard({ nickname }) {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onMouseDown={handleBoardMouseDown}
+          onWheel={handleWheel}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           onClick={() => { if (!dragInfo) setSelectedCard(null) }}
         >
-          {/* 툴바 */}
           <div className="board-toolbar">
             <button className="btn btn-primary btn-sm" data-tip="새 생각 카드 만들기" onClick={addThought}>
               + 새 카드
             </button>
-            <div className="color-picker" style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
+            <div className="color-picker">
               {COLORS.map(c => (
                 <button
                   key={c.name}
@@ -243,73 +355,126 @@ export default function ThoughtBoard({ nickname }) {
               ))}
             </div>
             {connecting && (
-              <span style={{ fontSize: 12, color: 'var(--accent)', alignSelf: 'center', marginLeft: 8 }}>
+              <span className="board-connecting-hint">
                 연결할 카드를 클릭하세요
-                <button className="btn btn-sm btn-ghost" style={{ marginLeft: 6 }} onClick={() => setConnecting(null)}>취소</button>
+                <button className="btn btn-sm btn-ghost" onClick={() => setConnecting(null)}>취소</button>
               </span>
             )}
+            <div className="zoom-controls">
+              <span className="zoom-level">{Math.round(zoom * 100)}%</span>
+              <button className="btn btn-sm btn-ghost" onClick={resetZoom} title="줌 초기화">
+                🔄
+              </button>
+            </div>
           </div>
 
-          {/* SVG 연결선 */}
-          <svg className="connections-svg">
+          <svg 
+            ref={svgRef}
+            className="connections-svg"
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: '0 0',
+              transition: panDrag ? 'none' : 'transform 0.1s',
+            }}
+          >
             {connections.map((conn) => {
               const from = thoughts.find(t => t.id === conn.from_thought_id)
               const to = thoughts.find(t => t.id === conn.to_thought_id)
               if (!from || !to) return null
               const a = getCardCenter(from)
               const b = getCardCenter(to)
+              const pathData = generateBezierPath(a.x, a.y, b.x, b.y)
+              
               return (
-                <line key={conn.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+                <g key={conn.id}>
+                  <path
+                    d={pathData}
+                    className="connection-path"
+                    style={{
+                      stroke: from.color || COLORS[0].value,
+                      opacity: hoveredConnection === conn.id ? 1 : 0.4,
+                    }}
+                    onMouseEnter={() => setHoveredConnection(conn.id)}
+                    onMouseLeave={() => setHoveredConnection(null)}
+                  />
+                  {hoveredConnection === conn.id && (
+                    <g className="connection-delete-btn">
+                      <circle cx={(a.x + b.x) / 2} cy={(a.y + b.y) / 2} r="14" fill="white" stroke="#ddd" strokeWidth="1" />
+                      <text 
+                        x={(a.x + b.x) / 2} 
+                        y={(a.y + b.y) / 2} 
+                        textAnchor="middle" 
+                        dy="0.35em" 
+                        fontSize="12"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => deleteConnection(conn.id)}
+                      >
+                        ✕
+                      </text>
+                    </g>
+                  )}
+                </g>
               )
             })}
           </svg>
 
-          {/* 카드들 */}
-          {thoughts.map((thought) => (
-            <div
-              key={thought.id}
-              className="thought-card"
-              style={{
-                left: thought.pos_x,
-                top: thought.pos_y,
-                background: thought.color || COLORS[0].value,
-                zIndex: dragInfo?.id === thought.id ? 20 : 2,
-                border: selectedCard?.id === thought.id ? '2px solid var(--accent)' : '1px solid transparent',
-              }}
-              onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, thought) }}
-              onClick={(e) => { e.stopPropagation(); setSelectedCard(thought) }}
-            >
-              <div className="card-actions">
-                <button
-                  className="card-action-btn"
-                  title="연결"
-                  onClick={(e) => { e.stopPropagation(); setConnecting(thought.id) }}
-                >🔗</button>
-                <button
-                  className="card-action-btn"
-                  title="삭제"
-                  onClick={(e) => { e.stopPropagation(); deleteThought(thought.id) }}
-                >✕</button>
-              </div>
-              <div className="card-author">{thought.author_name}</div>
+          <div
+            className="board-content"
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: '0 0',
+              transition: panDrag ? 'none' : 'transform 0.1s',
+            }}
+          >
+            {thoughts.map((thought) => (
               <div
-                className="card-content"
-                contentEditable
-                suppressContentEditableWarning
-                onBlur={(e) => updateThoughtContent(thought.id, e.target.innerText)}
-                style={{ minHeight: 40, outline: 'none' }}
+                key={thought.id}
+                className="thought-card"
+                style={{
+                  left: thought.pos_x,
+                  top: thought.pos_y,
+                  background: thought.color || COLORS[0].value,
+                  zIndex: dragInfo?.id === thought.id ? 20 : 2,
+                  border: selectedCard?.id === thought.id ? '2px solid var(--accent)' : '1px solid rgba(0,0,0,0.04)',
+                }}
+                onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, thought) }}
+                onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, thought) }}
+                onClick={(e) => { e.stopPropagation(); setSelectedCard(thought) }}
               >
-                {thought.content || '여기에 생각을 적어보세요...'}
+                <div className="card-actions">
+                  <button
+                    className="card-action-btn"
+                    title="연결"
+                    onClick={(e) => { e.stopPropagation(); setConnecting(thought.id) }}
+                  >🔗</button>
+                  <button
+                    className="card-action-btn"
+                    title="삭제"
+                    onClick={(e) => { e.stopPropagation(); deleteThought(thought.id) }}
+                  >✕</button>
+                </div>
+                <div className="card-header">
+                  <span className="card-emoji">{getEmojiForNickname(thought.author_name)}</span>
+                  <div className="card-author">{thought.author_name}</div>
+                </div>
+                <div
+                  className="card-content"
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) => updateThoughtContent(thought.id, e.target.innerText)}
+                  style={{ minHeight: 40, outline: 'none' }}
+                >
+                  {thought.content || '여기에 생각을 적어보세요...'}
+                </div>
+                <div className="card-time">
+                  {new Date(thought.created_at).toLocaleDateString('ko-KR', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })}
+                </div>
               </div>
-              <div className="card-time">
-                {new Date(thought.created_at).toLocaleDateString('ko-KR', {
-                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                })}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
 
-          {/* 댓글 패널 */}
           {selectedCard && (
             <div className="comment-panel" onClick={(e) => e.stopPropagation()}>
               <div className="comment-panel-header">
@@ -317,7 +482,10 @@ export default function ThoughtBoard({ nickname }) {
                 <button className="card-action-btn" onClick={() => setSelectedCard(null)}>✕</button>
               </div>
               <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, background: selectedCard.color || '#fff' }}>
-                <strong>{selectedCard.author_name}</strong>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 18 }}>{getEmojiForNickname(selectedCard.author_name)}</span>
+                  <strong>{selectedCard.author_name}</strong>
+                </div>
                 <p style={{ marginTop: 4 }}>{selectedCard.content}</p>
               </div>
               <div className="comment-list">
@@ -328,7 +496,10 @@ export default function ThoughtBoard({ nickname }) {
                 )}
                 {comments.map((c) => (
                   <div key={c.id} className="comment-item">
-                    <div className="comment-author">{c.author_name}</div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: 14 }}>{getEmojiForNickname(c.author_name)}</span>
+                      <div className="comment-author">{c.author_name}</div>
+                    </div>
                     <div>{c.content}</div>
                     <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 4 }}>
                       {new Date(c.created_at).toLocaleDateString('ko-KR', {
