@@ -885,17 +885,19 @@
 
 .connection-path {
   fill: none;
-  stroke-width: 2.5;
+  stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: opacity 0.15s, stroke-width 0.15s;
+  transition: opacity 0.15s, stroke-width 0.15s, filter 0.15s;
   cursor: pointer;
   pointer-events: stroke;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
 }
 
 .connection-path:hover {
-  stroke-width: 3.5;
+  stroke-width: 4.5;
   opacity: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
 }
 
 .connection-delete-btn {

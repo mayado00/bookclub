@@ -4,11 +4,11 @@ import { supabase } from '../lib/supabase'
 import PageGuide from '../components/PageGuide'
 
 const COLORS = [
-  { name: 'lavender', value: '#EDE7F6' },
-  { name: 'sky', value: '#E3F2FD' },
-  { name: 'mint', value: '#E0F7FA' },
-  { name: 'peach', value: '#FFF3E0' },
-  { name: 'rose', value: '#FCE4EC' },
+  { name: 'lavender', value: '#EDE7F6', stroke: '#9575CD' },
+  { name: 'sky', value: '#E3F2FD', stroke: '#64B5F6' },
+  { name: 'mint', value: '#E0F7FA', stroke: '#4DB6AC' },
+  { name: 'peach', value: '#FFF3E0', stroke: '#FFB74D' },
+  { name: 'rose', value: '#FCE4EC', stroke: '#F06292' },
 ]
 
 const EMOJI_AVATARS = ['👨‍💼', '👩‍💼', '🧑‍🎓', '👨‍🎨', '👩‍💻', '🧑‍🔬', '👨‍🏫', '👩‍⚕️', '🧑‍🍳', '👨‍🌾']
@@ -411,8 +411,8 @@ export default function ThoughtBoard({ nickname }) {
                     d={pathData}
                     className="connection-path"
                     style={{
-                      stroke: from.color || COLORS[0].value,
-                      opacity: hoveredConnection === conn.id ? 1 : 0.4,
+                      stroke: (COLORS.find(c => c.value === from.color)?.stroke) || COLORS[0].stroke,
+                      opacity: hoveredConnection === conn.id ? 1 : 0.7,
                     }}
                     onMouseEnter={() => setHoveredConnection(conn.id)}
                     onMouseLeave={() => setHoveredConnection(null)}
