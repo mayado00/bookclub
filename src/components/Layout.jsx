@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import ImageCropper from './ImageCropper'
 
 const navItems = [
   { path: '/', label: '홈', icon: '🏠' },
@@ -14,6 +16,8 @@ const EMOJI_OPTIONS = ['😊','😎','🤓','🐱','🐶','🦊','🐻','🐰','
 export default function Layout({ children, nickname, onNicknameChange, emoji, onEmojiChange, userEmail, userAvatar, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showAvatarCropper, setShowAvatarCropper] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState(userAvatar || null)
   const [localNick, setLocalNick] = useState(nickname)
   const composingRef = useRef(false)
   const location = useLocation()
@@ -25,10 +29,7 @@ export default function Layout({ children, nickname, onNicknameChange, emoji, on
     }
   }
 
-  const handleCompositionStart = () => {
-    composingRef.current = true
-  }
-
+  const handleCompositionStart = () => { composingRef.current = true }
   const handleCompositionEnd = (e) => {
     composingRef.current = false
     setLocalNick(e.target.value)
@@ -37,6 +38,19 @@ export default function Layout({ children, nickname, onNicknameChange, emoji, on
 
   if (!composingRef.current && localNick !== nickname) {
     setLocalNick(nickname)
+  }
+
+  const handleAvatarCropped = async (blob) => {
+    setShowAvatarCropper(false)
+    const path = `${userEmail || 'anon'}/${Date.now()}.jpg`
+    const { error } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true })
+    if (!error) {
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      setAvatarUrl(data.publicUrl)
+      if (userEmail) {
+        await supabase.from('members').update({ avatar_url: data.publicUrl }).eq('email', userEmail)
+      }
+    }
   }
 
   return (
@@ -71,13 +85,24 @@ export default function Layout({ children, nickname, onNicknameChange, emoji, on
 
         <div className="sidebar-footer">
           <div className="nickname-section">
-            <button
-              className="emoji-avatar"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              title="이모지 변경"
-            >
-              {emoji || '😊'}
-            </button>
+            <div className="avatar-wrapper">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="avatar-img"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                />
+              ) : (
+                <button
+                  className="emoji-avatar"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  title="이모지/프로필 변경"
+                >
+                  {emoji || '😊'}
+                </button>
+              )}
+            </div>
             <input
               className="nickname-input"
               type="text"
@@ -93,12 +118,20 @@ export default function Layout({ children, nickname, onNicknameChange, emoji, on
               {EMOJI_OPTIONS.map((e) => (
                 <button
                   key={e}
-                  className={`emoji-option ${emoji === e ? 'selected' : ''}`}
-                  onClick={() => { onEmojiChange(e); setShowEmojiPicker(false) }}
+                  className={`emoji-option ${emoji === e && !avatarUrl ? 'selected' : ''}`}
+                  onClick={() => { onEmojiChange(e); setAvatarUrl(null); setShowEmojiPicker(false) }}
                 >
                   {e}
                 </button>
               ))}
+              <button
+                className="emoji-option"
+                onClick={() => { setShowEmojiPicker(false); setShowAvatarCropper(true) }}
+                title="사진 업로드"
+                style={{ fontSize: 14, color: 'var(--accent)' }}
+              >
+                📷
+              </button>
             </div>
           )}
           {userEmail && (
@@ -119,6 +152,15 @@ export default function Layout({ children, nickname, onNicknameChange, emoji, on
       <main className="main-content">
         {children}
       </main>
+
+      {showAvatarCropper && (
+        <ImageCropper
+          aspect={1}
+          title="프로필 사진 설정"
+          onCropped={handleAvatarCropped}
+          onCancel={() => setShowAvatarCropper(false)}
+        />
+      )}
     </div>
   )
 }

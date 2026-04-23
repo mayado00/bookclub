@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import PageGuide from '../components/PageGuide'
+import ImageCropper from '../components/ImageCropper'
 
 export default function BookPlan({ nickname, emoji }) {
   const [books, setBooks] = useState([])
@@ -15,6 +16,7 @@ export default function BookPlan({ nickname, emoji }) {
     start_date: '', end_date: '', status: 'reading'
   })
   const [noteForm, setNoteForm] = useState({ page: '', excerpt: '', thought: '' })
+  const [showCoverCropper, setShowCoverCropper] = useState(false)
   const [loading, setLoading] = useState(true)
   const composingRef = useRef(false)
 
@@ -132,6 +134,16 @@ export default function BookPlan({ nickname, emoji }) {
       return { page: note.title, excerpt: d.excerpt, thought: d.thought, author: d.author, emoji: d.emoji || '😊' }
     } catch {
       return { page: note.title, excerpt: '', thought: note.description || '', author: '', emoji: '😊' }
+    }
+  }
+
+  async function handleCoverCropped(blob) {
+    setShowCoverCropper(false)
+    const path = `covers/${Date.now()}.jpg`
+    const { error } = await supabase.storage.from('covers').upload(path, blob)
+    if (!error) {
+      const { data } = supabase.storage.from('covers').getPublicUrl(path)
+      setBookForm({ ...bookForm, cover_url: data.publicUrl })
     }
   }
 
@@ -358,8 +370,22 @@ export default function BookPlan({ nickname, emoji }) {
                 <input type="month" value={bookForm.year_month} onChange={e => setBookForm({...bookForm, year_month: e.target.value})} />
               </div>
               <div className="modal-field">
-                <label>표지 이미지 URL</label>
-                <input value={bookForm.cover_url} onChange={e => setBookForm({...bookForm, cover_url: e.target.value})} placeholder="https://..." />
+                <label>표지 이미지</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {bookForm.cover_url ? (
+                    <img src={bookForm.cover_url} alt="" style={{ width: 48, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                  ) : (
+                    <div style={{ width: 48, height: 72, borderRadius: 6, border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: 'var(--text-lighter)' }}>📖</div>
+                  )}
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowCoverCropper(true)}>
+                    {bookForm.cover_url ? '변경' : '업로드'}
+                  </button>
+                  {bookForm.cover_url && (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBookForm({...bookForm, cover_url: ''})} style={{ color: 'var(--danger)', fontSize: 12 }}>
+                      제거
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="modal-field">
                 <label>설명</label>
@@ -382,6 +408,15 @@ export default function BookPlan({ nickname, emoji }) {
             </form>
           </div>
         </div>
+      )}
+
+      {showCoverCropper && (
+        <ImageCropper
+          aspect={2 / 3}
+          title="책 표지 설정"
+          onCropped={handleCoverCropped}
+          onCancel={() => setShowCoverCropper(false)}
+        />
       )}
     </div>
   )
