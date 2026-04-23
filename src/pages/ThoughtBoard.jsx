@@ -91,7 +91,7 @@ export default function ThoughtBoard({ nickname }) {
     const x = 80 + Math.random() * ((rect?.width || 600) - 280)
     const y = 60 + Math.random() * 300
 
-    const { data } = await supabase.from('thoughts').insert([{
+    const { data, error } = await supabase.from('thoughts').insert([{
       book_id: activeBookId,
       author_name: nickname,
       content: '',
@@ -100,21 +100,41 @@ export default function ThoughtBoard({ nickname }) {
       pos_y: y,
     }]).select()
 
+    if (error) {
+      console.error('카드 생성 실패:', error)
+      alert('카드를 만들 수 없어요. 권한을 확인해 주세요.')
+      return
+    }
     if (data) setThoughts([...thoughts, data[0]])
   }
 
   async function updateThoughtContent(id, content) {
-    await supabase.from('thoughts').update({ content }).eq('id', id)
+    const { error } = await supabase.from('thoughts').update({ content }).eq('id', id)
+    if (error) {
+      console.error('카드 내용 수정 실패:', error)
+      alert('카드 수정 권한이 없거나 오류가 발생했어요.')
+      loadThoughts() // DB 상태로 복원
+      return
+    }
     setThoughts(thoughts.map(t => t.id === id ? { ...t, content } : t))
   }
 
   async function updateThoughtPosition(id, pos_x, pos_y) {
-    await supabase.from('thoughts').update({ pos_x, pos_y }).eq('id', id)
-    setThoughts(thoughts.map(t => t.id === id ? { ...t, pos_x, pos_y } : t))
+    const { error } = await supabase.from('thoughts').update({ pos_x, pos_y }).eq('id', id)
+    if (error) {
+      console.error('카드 이동 실패:', error)
+      loadThoughts() // DB 상태로 복원
+    }
   }
 
   async function deleteThought(id) {
-    await supabase.from('thoughts').delete().eq('id', id)
+    if (!confirm('이 카드를 삭제할까요?')) return
+    const { error } = await supabase.from('thoughts').delete().eq('id', id)
+    if (error) {
+      console.error('카드 삭제 실패:', error)
+      alert('카드 삭제 권한이 없거나 오류가 발생했어요.')
+      return
+    }
     setThoughts(thoughts.filter(t => t.id !== id))
     setConnections(connections.filter(c => c.from_thought_id !== id && c.to_thought_id !== id))
     if (selectedCard?.id === id) setSelectedCard(null)
