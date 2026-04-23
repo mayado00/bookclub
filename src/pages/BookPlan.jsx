@@ -143,7 +143,7 @@ export default function BookPlan({ nickname, emoji }) {
     <div>
       <div className="flex-between page-header">
         <div>
-          <h1>독서 계획</h1>
+          <h1>독서 노트</h1>
           <p>한 달에 한 권, 우리의 여정</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

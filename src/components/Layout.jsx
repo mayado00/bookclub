@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 
 const navItems = [
   { path: '/', label: '홈', icon: '🏠' },
-  { path: '/plan', label: '독서 계획', icon: '📋' },
+  { path: '/plan', label: '독서 노트', icon: '📋' },
   { path: '/board', label: '생각 보드', icon: '💭' },
   { path: '/meetings', label: '모임 기록', icon: '📸' },
   { path: '/archive', label: '아카이브', icon: '📦' },
@@ -11,7 +11,7 @@ const navItems = [
 
 const EMOJI_OPTIONS = ['😊','😎','🤓','🐱','🐶','🦊','🐻','🐰','🐸','🌸','🌻','🍀','⭐','🔥','💜','🎵','🦋','🍩']
 
-export default function Layout({ children, nickname, onNicknameChange, emoji, onEmojiChange }) {
+export default function Layout({ children, nickname, onNicknameChange, emoji, onEmojiChange, userEmail, userAvatar, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [localNick, setLocalNick] = useState(nickname)
@@ -35,7 +35,6 @@ export default function Layout({ children, nickname, onNicknameChange, emoji, on
     onNicknameChange(e.target.value)
   }
 
-  // sync from parent if changed externally
   if (!composingRef.current && localNick !== nickname) {
     setLocalNick(nickname)
   }
@@ -102,6 +101,12 @@ export default function Layout({ children, nickname, onNicknameChange, emoji, on
               ))}
             </div>
           )}
+          {userEmail && (
+            <div className="user-info">
+              <span className="user-email">{userEmail}</span>
+              <button className="btn-logout" onClick={onLogout}>로그아웃</button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -112,21 +117,6 @@ export default function Layout({ children, nickname, onNicknameChange, emoji, on
       </div>
 
       <main className="main-content">
-        {!nickname && (
-          <div className="nickname-banner">
-            <span>✏️</span>
-            <span>먼저 닉네임을 설정해 주세요:</span>
-            <input
-              type="text"
-              value={localNick}
-              onChange={handleNickInput}
-              onCompositionStart={handleCompositionStart}
-              onCompositionEnd={handleCompositionEnd}
-              placeholder="예: 철수"
-              autoFocus
-            />
-          </div>
-        )}
         {children}
       </main>
     </div>
