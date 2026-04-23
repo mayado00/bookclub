@@ -148,6 +148,25 @@
   transform: scale(1.1);
 }
 
+.avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.avatar-img:hover {
+  border-color: var(--accent);
+  transform: scale(1.1);
+}
+
 .emoji-picker {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -1239,6 +1258,39 @@
 @keyframes tipIn {
   from { opacity: 0; transform: translateX(-50%) translateY(4px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Image cropper */
+.crop-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px;
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-light);
+}
+
+.crop-dropzone:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.crop-dropzone p {
+  font-size: 13px;
+}
+
+.crop-container {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg);
 }
 
 /* Utility */
