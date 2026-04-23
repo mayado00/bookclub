@@ -11,20 +11,14 @@ const COLORS = [
   { name: 'rose', value: '#FCE4EC', stroke: '#F06292' },
 ]
 
-const EMOJI_AVATARS = ['👨‍💼', '👩‍💼', '🧑‍🎓', '👨‍🎨', '👩‍💻', '🧑‍🔬', '👨‍🏫', '👩‍⚕️', '🧑‍🍳', '👨‍🌾']
-
-function getEmojiForNickname(nickname) {
-  const hash = nickname.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return EMOJI_AVATARS[hash % EMOJI_AVATARS.length]
-}
-
-export default function ThoughtBoard({ nickname }) {
+export default function ThoughtBoard({ nickname, emoji }) {
   const { bookId } = useParams()
   const [books, setBooks] = useState([])
   const [activeBookId, setActiveBookId] = useState(bookId || null)
   const [thoughts, setThoughts] = useState([])
   const [connections, setConnections] = useState([])
   const [comments, setComments] = useState([])
+  const [memberEmojis, setMemberEmojis] = useState({})
   const [selectedCard, setSelectedCard] = useState(null)
   const [connecting, setConnecting] = useState(null)
   const [dragInfo, setDragInfo] = useState(null)
@@ -37,7 +31,7 @@ export default function ThoughtBoard({ nickname }) {
   const boardRef = useRef(null)
   const svgRef = useRef(null)
 
-  useEffect(() => { loadBooks() }, [])
+  useEffect(() => { loadBooks(); loadMemberEmojis() }, [])
   useEffect(() => {
     if (activeBookId) {
       loadThoughts()
@@ -48,6 +42,19 @@ export default function ThoughtBoard({ nickname }) {
   useEffect(() => {
     if (selectedCard) loadComments(selectedCard.id)
   }, [selectedCard])
+
+  async function loadMemberEmojis() {
+    const { data } = await supabase.from('members').select('nickname, emoji')
+    if (data) {
+      const map = {}
+      data.forEach(m => { if (m.nickname) map[m.nickname] = m.emoji || '😊' })
+      setMemberEmojis(map)
+    }
+  }
+
+  function getMemberEmoji(authorName) {
+    return memberEmojis[authorName] || '😊'
+  }
 
   async function loadBooks() {
     const { data } = await supabase
@@ -474,7 +481,7 @@ export default function ThoughtBoard({ nickname }) {
                   >✕</button>
                 </div>
                 <div className="card-header">
-                  <span className="card-emoji">{getEmojiForNickname(thought.author_name)}</span>
+                  <span className="card-emoji">{getMemberEmoji(thought.author_name)}</span>
                   <div className="card-author">{thought.author_name}</div>
                 </div>
                 <div
@@ -503,7 +510,7 @@ export default function ThoughtBoard({ nickname }) {
               </div>
               <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-light)', fontSize: 13, background: selectedCard.color || '#fff' }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 18 }}>{getEmojiForNickname(selectedCard.author_name)}</span>
+                  <span style={{ fontSize: 18 }}>{getMemberEmoji(selectedCard.author_name)}</span>
                   <strong>{selectedCard.author_name}</strong>
                 </div>
                 <p style={{ marginTop: 4 }}>{selectedCard.content}</p>
@@ -517,7 +524,7 @@ export default function ThoughtBoard({ nickname }) {
                 {comments.map((c) => (
                   <div key={c.id} className="comment-item">
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: 14 }}>{getEmojiForNickname(c.author_name)}</span>
+                      <span style={{ fontSize: 14 }}>{getMemberEmoji(c.author_name)}</span>
                       <div className="comment-author">{c.author_name}</div>
                     </div>
                     <div>{c.content}</div>
